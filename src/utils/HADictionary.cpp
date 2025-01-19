@@ -71,6 +71,7 @@ const char HAMaxTempProperty[] PROGMEM = {"max_temp"};
 const char HATempStepProperty[] PROGMEM = {"temp_step"};
 const char HAFanModesProperty[] PROGMEM = {"fan_modes"};
 const char HASwingModesProperty[] PROGMEM = {"swing_modes"};
+const char HAPresetModesProperty[] PROGMEM = {"preset_modes"};
 const char HAModesProperty[] PROGMEM = {"modes"};
 const char HATemperatureCommandTemplateProperty[] PROGMEM = {"temp_cmd_tpl"};
 const char HAPayloadOnProperty[] PROGMEM = {"pl_on"};
@@ -98,6 +99,8 @@ const char HAFanModeCommandTopic[] PROGMEM = {"fan_mode_cmd_t"};
 const char HAFanModeStateTopic[] PROGMEM = {"fan_mode_stat_t"};
 const char HASwingModeCommandTopic[] PROGMEM = {"swing_mode_cmd_t"};
 const char HASwingModeStateTopic[] PROGMEM = {"swing_mode_stat_t"};
+const char HAPresetModeCommandTopic[] PROGMEM = {"preset_mode_cmd_t"};
+const char HAPresetModeStateTopic[] PROGMEM = {"preset_mode_stat_t"};
 const char HAModeCommandTopic[] PROGMEM = {"mode_cmd_t"};
 const char HAModeStateTopic[] PROGMEM = {"mode_stat_t"};
 const char HATemperatureCommandTopic[] PROGMEM = {"temp_cmd_t"};
@@ -181,6 +184,16 @@ const char HAFanModeHigh[] PROGMEM = {"high"};
 const char HASwingModeOn[] PROGMEM = {"on"};
 const char HASwingModeOff[] PROGMEM = {"off"};
 
+// preset modes
+const char HANonePresetMode[] PROGMEM = {"none"};
+const char HAEcoPresetMode[] PROGMEM = {"eco"};
+const char HAAwayPresetMode[] PROGMEM = {"away"};
+const char HABoostPresetMode[] PROGMEM = {"boost"};
+const char HAComfortPresetMode[] PROGMEM = {"comfort"};
+const char HAHomePresetMode[] PROGMEM = {"home"};
+const char HASleepPresetMode[] PROGMEM = {"sleep"};
+const char HAActivityPresetMode[] PROGMEM = {"activity"};
+
 // HVAC modes
 const char HAModeAuto[] PROGMEM = {"auto"};
 const char HAModeOff[] PROGMEM = {"off"};
@@ -188,6 +201,15 @@ const char HAModeCool[] PROGMEM = {"cool"};
 const char HAModeHeat[] PROGMEM = {"heat"};
 const char HAModeDry[] PROGMEM = {"dry"};
 const char HAModeFanOnly[] PROGMEM = {"fan_only"};
+
+// HVAC preset modes
+const char HAPresetModeEco[] PROGMEM = {"eco"};
+const char HAPresetModeAway[] PROGMEM = {"away"};
+const char HAPresetModeBoost[] PROGMEM = {"boost"};
+const char HAPresetModeComfort[] PROGMEM = {"comfort"};
+const char HAPresetModeHome[] PROGMEM = {"home"};
+const char HAPresetModeSleep[] PROGMEM = {"sleep"};
+const char HAPresetModeActivity[] PROGMEM = {"activity"};
 
 // other
 const char HAHexMap[] PROGMEM = {"0123456789abcdef"};

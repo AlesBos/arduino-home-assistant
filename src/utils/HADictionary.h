@@ -71,6 +71,7 @@ extern const char HAMaxTempProperty[];
 extern const char HATempStepProperty[];
 extern const char HAFanModesProperty[];
 extern const char HASwingModesProperty[];
+extern const char HAPresetModesProperty[];
 extern const char HAModesProperty[];
 extern const char HATemperatureCommandTemplateProperty[];
 extern const char HAPayloadOnProperty[];
@@ -98,6 +99,8 @@ extern const char HAFanModeCommandTopic[];
 extern const char HAFanModeStateTopic[];
 extern const char HASwingModeCommandTopic[];
 extern const char HASwingModeStateTopic[];
+extern const char HAPresetModeCommandTopic[];
+extern const char HAPresetModeStateTopic[];
 extern const char HAModeCommandTopic[];
 extern const char HAModeStateTopic[];
 extern const char HATemperatureCommandTopic[];
@@ -180,6 +183,16 @@ extern const char HAFanModeHigh[];
 // swing modes
 extern const char HASwingModeOn[];
 extern const char HASwingModeOff[];
+
+// preset modes
+extern const char HANonePresetMode[];
+extern const char HAEcoPresetMode[];
+extern const char HAAwayPresetMode[];
+extern const char HABoostPresetMode[];
+extern const char HAComfortPresetMode[];
+extern const char HAHomePresetMode[];
+extern const char HASleepPresetMode[];
+extern const char HAActivityPresetMode[];
 
 // HVAC modes
 extern const char HAModeAuto[];
