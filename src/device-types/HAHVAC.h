@@ -30,6 +30,7 @@
 #define HAHVAC_CALLBACK_TARGET_TEMP(name) void (*name)(HANumeric temperature, HAHVAC* sender)
 #define HAHVAC_CALLBACK_FAN_MODE(name) void (*name)(FanMode mode, HAHVAC* sender)
 #define HAHVAC_CALLBACK_SWING_MODE(name) void (*name)(SwingMode mode, HAHVAC* sender)
+#define HAHVAC_CALLBACK_PRESET_MODE(name) void (*name)(PresetMode mode, HAHVAC* sender)
 #define HAHVAC_CALLBACK_MODE(name) void (*name)(Mode mode, HAHVAC* sender)
 
 class HASerializerArray;
@@ -46,6 +47,7 @@ class HAHVAC : public HABaseDeviceType
 public:
     static const uint8_t DefaultFanModes;
     static const uint8_t DefaultSwingModes;
+    static const uint8_t DefaultPresetModes;
     static const uint8_t DefaultModes;
 
     /// The list of features available in the HVAC. They're used in the constructor.
@@ -57,7 +59,8 @@ public:
         FanFeature = 8,
         SwingFeature = 16,
         ModesFeature = 32,
-        TargetTemperatureFeature = 64
+        TargetTemperatureFeature = 64,
+        PresetFeature = 128
     };
 
     /// The list of available actions of the HVAC.
@@ -87,6 +90,19 @@ public:
         OffSwingMode = 2
     };
 
+    /// The list of available preset modes.
+    enum PresetMode {
+        UnknownPresetMode = 0,
+        NonePresetMode = 1,
+        EcoPresetMode = 2,
+        AwayPresetMode = 4,
+        BoostPresetMode = 8,
+        ComfortPresetMode = 16,
+        HomePresetMode = 32,
+        SleepPresetMode = 64,
+        ActivityPresetMode = 128
+    };
+
     /// The list of available HVAC's modes.
     enum Mode {
         UnknownMode = 0,
@@ -113,6 +129,23 @@ public:
     HAHVAC(
         const char* uniqueId,
         const uint16_t features = DefaultFeatures,
+        const NumberPrecision precision = PrecisionP1
+    );
+
+    /**
+     * @param uniqueId The unique ID of the HVAC. It needs to be unique in a scope of your device.
+     * @param features Features that should be enabled for the HVAC.
+     * @param modes Modes that should be enabled for the HVAC.
+     * @param swingModes Swing modes that should be enabled for the HVAC.
+     * @param presetModes Preset modes that should be enabled for the HVAC.
+     * @param precision The precision of temperatures reported by the HVAC.
+     */
+    HAHVAC(
+        const char* uniqueId,
+        const uint16_t features = DefaultFeatures,
+        const uint16_t modes = DefaultModes,
+        const uint16_t swingModes = DefaultSwingModes,
+        const uint16_t presetModes = DefaultPresetModes,
         const NumberPrecision precision = PrecisionP1
     );
 
@@ -187,6 +220,17 @@ public:
      * @returns Returns `true` if MQTT message has been published successfully.
      */
     bool setSwingMode(const SwingMode mode, const bool force = false);
+
+    /**
+     * Changes preset mode of the HVAC and publishes MQTT message.
+     * Please note that if a new value is the same as previous one,
+     * the MQTT message won't be published.
+     *
+     * @param mode New preset mode.
+     * @param force Forces to update the mode without comparing it to a previous known value.
+     * @returns Returns `true` if MQTT message has been published successfully.
+     */
+    bool setPresetMode(const PresetMode mode, const bool force = false);
 
     /**
      * Changes mode of the HVAC and publishes MQTT message.
@@ -336,6 +380,31 @@ public:
         { _swingModes = modes; }
 
     /**
+     * Sets preset mode of the HVAC without publishing it to Home Assistant.
+     * This method may be useful if you want to change the mode before connection
+     * with MQTT broker is acquired.
+     *
+     * @param mode New preset mode.
+     */
+    inline void setCurrentPresetMode(const PresetMode mode)
+        { _presetMode = mode; }
+
+    /**
+     * Returns last known preset mode of the HVAC.
+     * If setPresetMode method wasn't called the initial value will be returned.
+     */
+    inline PresetMode getCurrentPresetMode() const
+        { return _presetMode; }
+
+    /**
+     * Sets available preset modes.
+     *
+     * @param modes The modes to set (for example: `HAHVAC::EcoPresetMode`).
+     */
+    inline void setPresetModes(const uint8_t modes)
+        { _presetModes = modes; }
+
+    /**
      * Sets mode of the HVAC without publishing it to Home Assistant.
      * This method may be useful if you want to change the mode before connection
      * with MQTT broker is acquired.
@@ -479,6 +548,16 @@ public:
         { _swingModeCallback = callback; }
 
     /**
+     * Registers callback that will be called each time the preset mode command from HA is received.
+     * Please note that it's not possible to register multiple callbacks for the same HVAC.
+     *
+     * @param callback
+     * @note The preset mode must be reported back to HA using the HAHVAC::setPresetMode method.
+     */
+    inline void onPresetModeCommand(HAHVAC_CALLBACK_PRESET_MODE(callback))
+        { _presetModeCallback = callback; }
+
+    /**
      * Registers callback that will be called each time the HVAC mode command from HA is received.
      * Please note that it's not possible to register multiple callbacks for the same HVAC.
      *
@@ -549,6 +628,14 @@ private:
     bool publishSwingMode(const SwingMode mode);
 
     /**
+     * Publishes the MQTT message with the given preset mode.
+     *
+     * @param mode The mode to publish.
+     * @returns Returns `true` if the MQTT message has been published successfully.
+     */
+    bool publishPresetMode(const PresetMode mode);
+
+    /**
      * Publishes the MQTT message with the given mode.
      *
      * @param mode The mode to publish.
@@ -595,6 +682,14 @@ private:
      * @param length Length of the command.
      */
     void handleSwingModeCommand(const uint8_t* cmd, const uint16_t length);
+
+    /**
+     * Parses the given preset mode command and executes the callback with proper value.
+     *
+     * @param cmd The data of the command.
+     * @param length Length of the command.
+     */
+    void handlePresetModeCommand(const uint8_t* cmd, const uint16_t length);
 
     /**
      * Parses the given HVAC's mode command and executes the callback with proper value.
@@ -680,6 +775,18 @@ private:
 
     /// Callback that will be called when the swing mode command is received from the HA.
     HAHVAC_CALLBACK_SWING_MODE(_swingModeCallback);
+
+    /// The current preset mode. By default it's `HAHVAC::UnknownPresetMode`.
+    PresetMode _presetMode;
+
+    /// The supported preset modes. By default it's `HAHVAC::UnknownPresetMode`.
+    uint8_t _presetModes;
+
+    /// The serializer for the preset modes. It's `nullptr` if the preset feature is disabled.
+    HASerializerArray* _presetModesSerializer;
+
+    /// Callback that will be called when the preset mode command is received from the HA.
+    HAHVAC_CALLBACK_PRESET_MODE(_presetModeCallback);
 
     /// The current mode. By default it's `HAHVAC::UnknownMode`.
     Mode _mode;

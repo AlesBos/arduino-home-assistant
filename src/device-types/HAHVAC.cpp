@@ -7,11 +7,24 @@
 
 const uint8_t HAHVAC::DefaultFanModes = AutoFanMode | LowFanMode | MediumFanMode | HighFanMode;
 const uint8_t HAHVAC::DefaultSwingModes = OnSwingMode | OffSwingMode;
+const uint8_t HAHVAC::DefaultPresetModes = UnknownPresetMode;
 const uint8_t HAHVAC::DefaultModes = AutoMode | OffMode | CoolMode | HeatMode | DryMode | FanOnlyMode;
 
 HAHVAC::HAHVAC(
     const char* uniqueId,
     const uint16_t features,
+    const NumberPrecision precision
+) :
+    HAHVAC(uniqueId, features, DefaultModes, DefaultSwingModes, DefaultPresetModes, precision)
+{
+}
+
+HAHVAC::HAHVAC(
+    const char* uniqueId,
+    const uint16_t features,
+    const uint16_t modes,
+    const uint16_t swingModes,
+    const uint16_t presetModes,
     const NumberPrecision precision
 ) :
     HABaseDeviceType(AHATOFSTR(HAComponentClimate), uniqueId),
@@ -36,6 +49,10 @@ HAHVAC::HAHVAC(
     _swingModes(DefaultSwingModes),
     _swingModesSerializer(nullptr),
     _swingModeCallback(nullptr),
+    _presetMode(UnknownPresetMode),
+    _presetModes(presetModes),
+    _presetModesSerializer(nullptr),
+    _presetModeCallback(nullptr),
     _mode(UnknownMode),
     _modes(DefaultModes),
     _modesSerializer(nullptr),
@@ -51,6 +68,10 @@ HAHVAC::HAHVAC(
         _swingModesSerializer = new HASerializerArray(2);
     }
 
+    if (_features & PresetFeature) {
+        _presetModesSerializer = new HASerializerArray(7);
+    }
+
     if (_features & ModesFeature) {
         _modesSerializer = new HASerializerArray(6);
     }
@@ -64,6 +85,10 @@ HAHVAC::~HAHVAC()
 
     if (_swingModesSerializer) {
         delete _swingModesSerializer;
+    }
+
+    if (_presetModesSerializer) {
+        delete _presetModesSerializer;
     }
 
     if (_modesSerializer) {
@@ -139,6 +164,20 @@ bool HAHVAC::setSwingMode(const SwingMode mode, const bool force)
 
     if (publishSwingMode(mode)) {
         _swingMode = mode;
+        return true;
+    }
+
+    return false;
+}
+
+bool HAHVAC::setPresetMode(const PresetMode mode, const bool force)
+{
+    if (!force && mode == _presetMode) {
+        return true;
+    }
+
+    if (publishPresetMode(mode)) {
+        _presetMode = mode;
         return true;
     }
 
@@ -264,6 +303,53 @@ void HAHVAC::buildSerializer()
         }
     }
 
+    if (_features & PresetFeature) {
+        _serializer->topic(AHATOFSTR(HAPresetModeCommandTopic));
+        _serializer->topic(AHATOFSTR(HAPresetModeStateTopic));
+
+        if (_presetModes != DefaultPresetModes) {
+            _presetModesSerializer->clear();
+
+            if (_presetModes & NonePresetMode) {
+                _presetModesSerializer->add(HANonePresetMode);
+            }
+
+            if (_presetModes & EcoPresetMode) {
+                _presetModesSerializer->add(HAEcoPresetMode);
+            }
+
+            if (_presetModes & AwayPresetMode) {
+                _presetModesSerializer->add(HAAwayPresetMode);
+            }
+
+            if (_presetModes & BoostPresetMode) {
+                _presetModesSerializer->add(HABoostPresetMode);
+            }
+
+            if (_presetModes & ComfortPresetMode) {
+                _presetModesSerializer->add(HAComfortPresetMode);
+            }
+
+            if (_presetModes & HomePresetMode) {
+                _presetModesSerializer->add(HAHomePresetMode);
+            }
+
+            if (_presetModes & SleepPresetMode) {
+                _presetModesSerializer->add(HASleepPresetMode);
+            }
+
+            if (_presetModes & ActivityPresetMode) {
+                _presetModesSerializer->add(HAActivityPresetMode);
+            }
+
+            _serializer->set(
+                AHATOFSTR(HAPresetModesProperty),
+                _presetModesSerializer,
+                HASerializer::ArrayPropertyType
+            );
+        }
+    }
+
     if (_features & ModesFeature) {
         _serializer->topic(AHATOFSTR(HAModeCommandTopic));
         _serializer->topic(AHATOFSTR(HAModeStateTopic));
@@ -369,6 +455,7 @@ void HAHVAC::onMqttConnected()
         publishAuxState(_auxState);
         publishFanMode(_fanMode);
         publishSwingMode(_swingMode);
+        publishPresetMode(_presetMode);
         publishMode(_mode);
         publishTargetTemperature(_targetTemperature);
     }
@@ -387,6 +474,10 @@ void HAHVAC::onMqttConnected()
 
     if (_features & SwingFeature) {
         subscribeTopic(uniqueId(), AHATOFSTR(HASwingModeCommandTopic));
+    }
+
+    if (_features & PresetFeature) {
+        subscribeTopic(uniqueId(), AHATOFSTR(HAPresetModeCommandTopic));
     }
 
     if (_features & ModesFeature) {
@@ -428,6 +519,12 @@ void HAHVAC::onMqttMessage(
         AHATOFSTR(HASwingModeCommandTopic)
     )) {
         handleSwingModeCommand(payload, length);
+    } else if (HASerializer::compareDataTopics(
+        topic,
+        uniqueId(),
+        AHATOFSTR(HAPresetModeCommandTopic)
+    )) {
+        handlePresetModeCommand(payload, length);
     } else if (HASerializer::compareDataTopics(
         topic,
         uniqueId(),
@@ -583,6 +680,57 @@ bool HAHVAC::publishSwingMode(const SwingMode mode)
     );
 }
 
+bool HAHVAC::publishPresetMode(const PresetMode mode)
+{
+    if (mode == UnknownPresetMode || !(_features & PresetFeature)) {
+        return false;
+    }
+
+    const __FlashStringHelper *stateStr = nullptr;
+    switch (mode) {
+    case NonePresetMode:
+        stateStr = AHATOFSTR(HANonePresetMode);
+        break;
+
+    case EcoPresetMode:
+        stateStr = AHATOFSTR(HAEcoPresetMode);
+        break;
+
+    case AwayPresetMode:
+        stateStr = AHATOFSTR(HAAwayPresetMode);
+        break;
+
+    case BoostPresetMode:
+        stateStr = AHATOFSTR(HABoostPresetMode);
+        break;
+
+    case ComfortPresetMode:
+        stateStr = AHATOFSTR(HAComfortPresetMode);
+        break;
+
+    case HomePresetMode:
+        stateStr = AHATOFSTR(HAHomePresetMode);
+        break;
+
+    case SleepPresetMode:
+        stateStr = AHATOFSTR(HASleepPresetMode);
+        break;
+
+    case ActivityPresetMode:
+        stateStr = AHATOFSTR(HAActivityPresetMode);
+        break;
+
+    default:
+        return false;
+    }
+
+    return publishOnDataTopic(
+        AHATOFSTR(HAPresetModeStateTopic),
+        stateStr,
+        true
+    );
+}
+
 bool HAHVAC::publishMode(const Mode mode)
 {
     if (mode == UnknownMode || !(_features & ModesFeature)) {
@@ -699,6 +847,31 @@ void HAHVAC::handleSwingModeCommand(const uint8_t* cmd, const uint16_t length)
         _swingModeCallback(OnSwingMode, this);
     } else if (memcmp_P(cmd, HASwingModeOff, length) == 0) {
         _swingModeCallback(OffSwingMode, this);
+    }
+}
+
+void HAHVAC::handlePresetModeCommand(const uint8_t* cmd, const uint16_t length)
+{
+    if (!_presetModeCallback) {
+        return;
+    }
+
+    if (memcmp_P(cmd, HANonePresetMode, length) == 0) {
+        _presetModeCallback(NonePresetMode, this);
+    } else if (memcmp_P(cmd, HAEcoPresetMode, length) == 0) {
+        _presetModeCallback(EcoPresetMode, this);
+    } else if (memcmp_P(cmd, HAAwayPresetMode, length) == 0) {
+        _presetModeCallback(AwayPresetMode, this);
+    } else if (memcmp_P(cmd, HABoostPresetMode, length) == 0) {
+        _presetModeCallback(BoostPresetMode, this);
+    } else if (memcmp_P(cmd, HAComfortPresetMode, length) == 0) {
+        _presetModeCallback(ComfortPresetMode, this);
+    } else if (memcmp_P(cmd, HAHomePresetMode, length) == 0) {
+        _presetModeCallback(HomePresetMode, this);
+    } else if (memcmp_P(cmd, HASleepPresetMode, length) == 0) {
+        _presetModeCallback(SleepPresetMode, this);
+    } else if (memcmp_P(cmd, HAActivityPresetMode, length) == 0) {
+        _presetModeCallback(ActivityPresetMode, this);
     }
 }
 
